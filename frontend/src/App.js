@@ -5,6 +5,7 @@ import RequirementForm from './components/RequirementForm';
 import UserStoryForm from './components/UserStoryForm';
 import TestCaseForm from './components/TestCaseForm';
 import DesignForm from './components/DesignForm';
+import ResourceGapForm from './components/ResourceGapForm';
 import './App.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
               <li><a href="/stories">User Stories</a></li>
               <li><a href="/test-cases">Test Cases</a></li>
               <li><a href="/design">Design</a></li>
+              <li><a href="/resource-gaps">Resource Gaps</a></li>
             </ul>
           </nav>
         </header>
@@ -30,6 +32,7 @@ function App() {
             <Route path="/stories" element={<UserStoryForm />} />
             <Route path="/test-cases" element={<TestCaseForm />} />
             <Route path="/design" element={<DesignForm />} />
+            <Route path="/resource-gaps" element={<ResourceGapForm />} />
           </Routes>
         </main>
       </div>

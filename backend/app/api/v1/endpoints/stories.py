@@ -1,5 +1,5 @@
 """
-User Story API endpoints with AI generation
+User Story API endpoints with AI generation and authentication
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -7,33 +7,34 @@ from typing import List
 from app import models, schemas
 from app.db.session import get_db
 from app.services.story_service import StoryService
+from app.core.security.deps import get_current_active_user
 
 router = APIRouter()
 story_service = StoryService()
 
 @router.post("/", response_model=schemas.UserStoryResponse)
-def create_user_story(user_story: schemas.UserStoryCreate, db: Session = Depends(get_db)):
-    db_user_story = models.UserStory(**user_story.dict())
+def create_user_story(user_story: schemas.UserStoryCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    db_user_story = models.UserStory(**user_story.dict(), owner_id=current_user.id, project_id=1) # For now, hardcode project_id=1, in real app we'd have project selection
     db.add(db_user_story)
     db.commit()
     db.refresh(db_user_story)
     return db_user_story
 
 @router.get("/", response_model=List[schemas.UserStoryResponse])
-def read_user_stories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    user_stories = db.query(models.UserStory).offset(skip).limit(limit).all()
+def read_user_stories(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    user_stories = db.query(models.UserStory).filter(models.UserStory.owner_id == current_user.id).offset(skip).limit(limit).all()
     return user_stories
 
 @router.get("/{user_story_id}", response_model=schemas.UserStoryResponse)
-def read_user_story(user_story_id: int, db: Session = Depends(get_db)):
-    user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id).first()
+def read_user_story(user_story_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id, models.UserStory.owner_id == current_user.id).first()
     if user_story is None:
         raise HTTPException(status_code=404, detail="User story not found")
     return user_story
 
 @router.put("/{user_story_id}", response_model=schemas.UserStoryResponse)
-def update_user_story(user_story_id: int, user_story: schemas.UserStoryUpdate, db: Session = Depends(get_db)):
-    db_user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id).first()
+def update_user_story(user_story_id: int, user_story: schemas.UserStoryUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    db_user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id, models.UserStory.owner_id == current_user.id).first()
     if db_user_story is None:
         raise HTTPException(status_code=404, detail="User story not found")
     for key, value in user_story.dict(exclude_unset=True).items():
@@ -43,8 +44,8 @@ def update_user_story(user_story_id: int, user_story: schemas.UserStoryUpdate, d
     return db_user_story
 
 @router.delete("/{user_story_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_story(user_story_id: int, db: Session = Depends(get_db)):
-    db_user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id).first()
+def delete_user_story(user_story_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    db_user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id, models.UserStory.owner_id == current_user.id).first()
     if db_user_story is None:
         raise HTTPException(status_code=404, detail="User story not found")
     db.delete(db_user_story)
@@ -52,12 +53,12 @@ def delete_user_story(user_story_id: int, db: Session = Depends(get_db)):
     return None
 
 @router.post("/{requirement_id}/generate-story", response_model=schemas.UserStoryResponse)
-def generate_user_story_from_requirement(requirement_id: int, db: Session = Depends(get_db)):
+def generate_user_story_from_requirement(requirement_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
     """
     Generate a user story from a refined requirement using AI.
     """
     # Get the requirement
-    requirement = db.query(models.Requirement).filter(models.Requirement.id == requirement_id).first()
+    requirement = db.query(models.Requirement).filter(models.Requirement.id == requirement_id, models.Requirement.owner_id == current_user.id).first()
     if requirement is None:
         raise HTTPException(status_code=404, detail="Requirement not found")
     
@@ -75,6 +76,7 @@ def generate_user_story_from_requirement(requirement_id: int, db: Session = Depe
         "title": story_result["title"],
         "description": story_result["description"],
         "acceptance_criteria": "\n".join([f"- {ac}" for ac in story_result["acceptance_criteria"]]) if story_result["acceptance_criteria"] else None,
+        "owner_id": current_user.id,
         "status": "draft"
     }
     
@@ -85,12 +87,12 @@ def generate_user_story_from_requirement(requirement_id: int, db: Session = Depe
     return db_user_story
 
 @router.post("/{user_story_id}/estimate", response_model=schemas.UserStoryResponse)
-def estimate_user_story_effort(user_story_id: int, db: Session = Depends(get_db)):
+def estimate_user_story_effort(user_story_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
     """
     Estimate effort for a user story using AI/heuristics and update the story with story points.
     """
     # Get the user story
-    user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id).first()
+    user_story = db.query(models.UserStory).filter(models.UserStory.id == user_story_id, models.UserStory.owner_id == current_user.id).first()
     if user_story is None:
         raise HTTPException(status_code=404, detail="User story not found")
     

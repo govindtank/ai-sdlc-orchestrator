@@ -3,7 +3,7 @@ AI SDLC Orchestrator - Backend Main Application
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import requirements, stories, estimates, test_cases, design_suggestions, resource_gaps
+from app.api.v1.endpoints import requirements, stories, estimates, test_cases, design_suggestions, resource_gaps, auth
 
 app = FastAPI(
     title="AI SDLC Orchestrator API",
@@ -21,6 +21,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(requirements.router, prefix="/api/v1/requirements", tags=["requirements"])
 app.include_router(stories.router, prefix="/api/v1/stories", tags=["stories"])
 app.include_router(estimates.router, prefix="/api/v1/estimates", tags=["estimates"])
