@@ -1,8 +1,8 @@
 """
-Pydantic schemas for Test Case
+Pydantic schemas for QA/Test Case
 """
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class TestCaseBase(BaseModel):
