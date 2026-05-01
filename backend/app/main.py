@@ -3,7 +3,7 @@ AI SDLC Orchestrator - Backend Main Application
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import requirements, stories, estimates, test_cases, design_suggestions, resource_gaps, auth, ws
+from app.api.v1.endpoints import requirements, stories, estimates, test_cases, design_suggestions, resource_gaps, auth, ws, analytics
 
 app = FastAPI(
     title="AI SDLC Orchestrator API",
@@ -29,6 +29,7 @@ app.include_router(test_cases.router, prefix="/api/v1/test-cases", tags=["test-c
 app.include_router(design_suggestions.router, prefix="/api/v1/design-suggestions", tags=["design-suggestions"])
 app.include_router(resource_gaps.router, prefix="/api/v1/resource-gaps", tags=["resource-gaps"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["websocket"])
+app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 
 @app.get("/")
 async def root():
